@@ -1,0 +1,27 @@
+[package]
+name = "cvxtract"
+version = "0.1.0"
+edition = "2021"
+description = "A Rust library for loading and extracting content from resumes/CVs in multiple formats"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yourusername/cvxtract"
+keywords = ["resume", "cv", "document", "parser", "extraction"]
+
+[dependencies]
+pdf-extract = "0.10.0"
+zip = "0.6"
+quick-xml = "0.31"
+
+# LLM inference dependencies  
+llama-cpp-rs = "0.2.0"
+reqwest = { version = "0.11", features = ["stream"] }
+tokio = { version = "1.0", features = ["full"] }
+tokio-util = { version = "0.7", features = ["codec"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10"
+futures-util = "0.3"
+
+[dev-dependencies]
+# For testing
+# tempfile = "3.0"
