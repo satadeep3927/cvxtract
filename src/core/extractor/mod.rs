@@ -73,7 +73,7 @@ impl Extractor {
         let prompt = format!(
             "Extract every piece of information from the CV below into a single JSON object.\n\
              Rules:\n\
-             - Output raw JSON only. No markdown fences, no prose, no trailing text.\n\
+             - Output raw JSON only. No markdown fences, no prose, no trailing text. DO NOT **OVERTHINK**.\n\
              - Use null for any field not found. Do not invent or infer data.\n\
              - Dates: {{\"year\": <int>, \"month\": <int|null>, \"day\": <int|null>}}. Numbers only, never strings.\n\
              - Ongoing roles: set the entire `end` to null, never {{\"year\":null,...}}.\n\
