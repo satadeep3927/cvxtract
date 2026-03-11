@@ -1,10 +1,10 @@
-use std::path::Path;
 use std::fmt;
+use std::path::Path;
 
-pub mod pdf;
 pub mod docx;
-pub mod text;
 pub mod html;
+pub mod pdf;
+pub mod text;
 
 /// Represents extracted document content with metadata
 #[derive(Debug, Clone)]
@@ -93,13 +93,13 @@ pub type Result<T> = std::result::Result<T, LoaderError>;
 pub trait DocumentLoader {
     /// Load a document from a file path
     fn load_from_path(&self, path: &Path) -> Result<Document>;
-    
+
     /// Load a document from raw bytes
     fn load_from_bytes(&self, data: &[u8], filename: Option<&str>) -> Result<Document>;
-    
+
     /// Check if this loader supports the given file type
     fn supports_format(&self, file_type: &FileType) -> bool;
-    
+
     /// Get the primary format this loader handles
     fn primary_format(&self) -> FileType;
 }
@@ -108,7 +108,7 @@ pub trait DocumentLoader {
 pub mod utils {
     use super::FileType;
     use std::path::Path;
-    
+
     /// Detect file type from file extension
     pub fn detect_file_type<P: AsRef<Path>>(path: P) -> FileType {
         if let Some(ext) = path.as_ref().extension() {
@@ -125,41 +125,42 @@ pub mod utils {
             FileType::Unknown
         }
     }
-    
+
     /// Detect file type from file magic bytes
     pub fn detect_from_bytes(data: &[u8]) -> FileType {
         if data.len() < 4 {
             return FileType::Unknown;
         }
-        
+
         // PDF magic bytes
         if data.starts_with(b"%PDF") {
             return FileType::Pdf;
         }
-        
+
         // ZIP-based formats (DOCX is a ZIP file)
         if data.starts_with(&[0x50, 0x4B, 0x03, 0x04]) {
             // Could be DOCX, but we'd need to inspect the ZIP contents to be sure
             return FileType::Docx;
         }
-        
+
         // HTML
-        if data.starts_with(b"<!DOCTYPE html") || 
-           data.starts_with(b"<html") ||
-           data.starts_with(b"<HTML") {
+        if data.starts_with(b"<!DOCTYPE html")
+            || data.starts_with(b"<html")
+            || data.starts_with(b"<HTML")
+        {
             return FileType::Html;
         }
-        
+
         // RTF
         if data.starts_with(b"{\\rtf") {
             return FileType::Rtf;
         }
-        
+
         // Default to text if mostly ASCII
         if data.iter().take(1000).all(|&b| b.is_ascii()) {
             return FileType::Text;
         }
-        
+
         FileType::Unknown
     }
 }
