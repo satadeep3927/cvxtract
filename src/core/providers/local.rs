@@ -1,9 +1,18 @@
-use llama_cpp_rs::{LlamaModel, LlamaContext, LlamaSession, SessionParams, LlamaParams};
+use llama_cpp_2::{
+    context::{LlamaContext, params::LlamaContextParams},
+    llama_backend::LlamaBackend,
+    llama_batch::LlamaBatch,
+    model::{LlamaModel, params::LlamaModelParams, AddBos},
+    sampling::LlamaSampler,
+};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 pub struct Local {
-    session: Option<LlamaSession>,
+    backend: Option<LlamaBackend>,
+    model: Option<LlamaModel>,
     model_path: PathBuf,
+    initialized: bool,
 }
 
 #[derive(Debug)]
@@ -11,6 +20,7 @@ pub enum LocalError {
     LoadError(String),
     InferenceError(String),
     DownloadError(String),
+    ContextError(String),
 }
 
 impl std::fmt::Display for LocalError {
@@ -19,6 +29,7 @@ impl std::fmt::Display for LocalError {
             LocalError::LoadError(msg) => write!(f, "Model load error: {}", msg),
             LocalError::InferenceError(msg) => write!(f, "Inference error: {}", msg),
             LocalError::DownloadError(msg) => write!(f, "Download error: {}", msg),
+            LocalError::ContextError(msg) => write!(f, "Context error: {}", msg),
         }
     }
 }
@@ -32,21 +43,35 @@ impl Local {
             .join(".cache")
             .join("models");
         
+        // Back to Qwen 3.5 model for better performance with llama-cpp-2
         let model_path = cache_dir.join("Qwen3.5-2B-Q4_K_M.gguf");
         
         Self {
-            session: None,
+            backend: None,
+            model: None,
             model_path,
+            initialized: false,
         }
     }
     
-    /// Initialize the model (download if needed, then load)
+    /// Initialize the model with llama-cpp-2 API (download if needed, then load)
     pub async fn initialize(&mut self) -> Result<(), LocalError> {
         // Ensure model exists (download if needed)
         self.ensure_model_exists().await?;
         
-        // Load the model with LLamaCPP
-        self.load_model()?;
+        // Initialize the llama backend
+        let backend = LlamaBackend::init()
+            .map_err(|e| LocalError::LoadError(format!("Failed to initialize backend: {:?}", e)))?;
+        
+        self.backend = Some(backend);
+        
+        // Load the model with default parameters 
+        let model_params = LlamaModelParams::default();
+        let model = LlamaModel::load_from_file(self.backend.as_ref().unwrap(), &self.model_path, &model_params)
+            .map_err(|e| LocalError::LoadError(format!("Failed to load Qwen 3.5 model: {:?}", e)))?;
+        
+        self.model = Some(model);
+        self.initialized = true;
         
         Ok(())
     }
@@ -54,11 +79,10 @@ impl Local {
     /// Check if model exists in cache, download if not
     async fn ensure_model_exists(&self) -> Result<(), LocalError> {
         if self.model_path.exists() {
-            println!("✅ Model found in cache: {}", self.model_path.display());
             return Ok(());
         }
         
-        println!("📥 Model not found, downloading...");
+        println!("Preparing AI model for document analysis...");
         self.download_model().await?;
         Ok(())
     }
@@ -75,8 +99,6 @@ impl Local {
         }
         
         let url = "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q4_K_M.gguf";
-        
-        println!("🌐 Downloading from: {}", url);
         
         let client = reqwest::Client::new();
         let response = client.get(url)
@@ -111,86 +133,170 @@ impl Local {
             
             if total_size > 0 {
                 let progress = (downloaded as f64 / total_size as f64) * 100.0;
-                print!("\r📥 Downloaded: {:.1}% ({:.1}MB / {:.1}MB)", 
-                    progress, 
-                    downloaded as f64 / 1_048_576.0,
-                    total_size as f64 / 1_048_576.0
-                );
+                print!("\rDownloading AI model: {:.0}%", progress);
                 use std::io::{self, Write};
                 io::stdout().flush().unwrap();
             }
         }
         
-        println!("\n✅ Download complete: {}", self.model_path.display());
+        println!("\nAI model ready for document analysis.");
         Ok(())
     }
     
-    /// Load the model with LLamaCPP
-    fn load_model(&mut self) -> Result<(), LocalError> {
-        println!("🔄 Loading model with LLamaCPP...");
+    /// Generate text using the loaded Qwen 3.5 model with thinking support
+    pub async fn generate(&mut self, prompt: &str) -> String {
+        // Auto-initialize if not done yet
+        if !self.initialized {
+            if let Err(e) = self.initialize().await {
+                return format!("Initialization error: {}", e);
+            }
+        }
         
-        // Configure LLamaCPP parameters
-        let model_params = LlamaParams {
-            n_ctx: 2048,      // Context size
-            n_batch: 8,       // Batch size  
-            n_gpu_layers: 20, // GPU layers (adjust based on your GPU)
-            ..Default::default()
-        };
-        
-        // Load the model
-        let model = LlamaModel::load_from_file(&self.model_path, model_params)
-            .map_err(|e| LocalError::LoadError(format!("Failed to load model: {:?}", e)))?;
-        
-        // Create context
-        let ctx_params = SessionParams {
-            n_len: 512,    // Max response length
-            n_ctx: 2048,   // Context window size
-            ..Default::default()
-        };
-        
-        // Create session
-        let session = LlamaSession::new(model, ctx_params)
-            .map_err(|e| LocalError::LoadError(format!("Failed to create session: {:?}", e)))?;
-        
-        self.session = Some(session);
-        
-        println!("✅ Model loaded successfully!");
-        Ok(())
-    }
-    
-    /// Generate text using the loaded model
-    pub fn generate(&mut self, prompt: &str) -> String {
-        let session = match &mut self.session {
-            Some(session) => session,
+        let model = match &self.model {
+            Some(model) => model,
             None => {
-                return "❌ Model not initialized. Call initialize() first.".to_string();
+                return "Model not loaded.".to_string();
             }
         };
         
-        // Build the complete prompt with chat template
+        let backend = match &self.backend {
+            Some(backend) => backend,
+            None => {
+                return "Backend not initialized.".to_string();
+            }
+        };
+        
+        // Create context with reasonable parameters
+        let context_params = LlamaContextParams::default();
+        
+        let mut context = match model.new_context(backend, context_params) {
+            Ok(ctx) => ctx,
+            Err(e) => {
+                return format!("Failed to create context: {:?}", e);
+            }
+        };
+        
+        // Build the complete prompt with Qwen 3.5 chat template and thinking support
         let formatted_prompt = format!(
-            "<|im_start|>system\nYou are a helpful AI assistant that analyzes documents and answers questions about them.<|im_end|>\n<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n",
+            "<|im_start|>system\nYou are a helpful AI assistant specialized in analyzing resumes and CVs. 
+
+IMPORTANT: Always start your response with <think> tags to show your reasoning process, then provide your final answer.
+
+Example format:
+<think>
+Let me analyze this step by step...
+- First, I notice...
+- The experience level suggests...
+- The skills mentioned are...
+</think>
+
+Based on my analysis, [your final response here]
+
+Provide concise, accurate analysis.<|im_end|>\n<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n<think>",
             prompt
         );
         
-        println!("🔄 Generating response...");
-        
-        // Generate response
-        match session.inference_with_prompt(&formatted_prompt) {
-            Ok(response) => {
-                println!("✅ Generation complete");
-                response
-            }
+        // Tokenize the prompt using the model
+        let tokens = match model.str_to_token(&formatted_prompt, AddBos::Always) {
+            Ok(tokens) => tokens,
             Err(e) => {
-                eprintln!("❌ Generation error: {:?}", e);
-                format!("Error generating response: {:?}", e)
+                return format!("Tokenization error: {:?}", e);
+            }
+        };
+        
+        // Create batch and add tokens
+        let mut batch = LlamaBatch::new(512, 1);
+        let last_index = tokens.len() as i32 - 1;
+        for (i, token) in (0_i32..).zip(tokens.into_iter()) {
+            let is_last = i == last_index;
+            if let Err(e) = batch.add(token, i, &[0], is_last) {
+                return format!("Batch add error: {:?}", e);
             }
         }
+        
+        // Evaluate the prompt tokens
+        if let Err(e) = context.decode(&mut batch) {
+            return format!("Decode error: {:?}", e);
+        }
+        
+        let mut response = String::new();
+        let max_tokens = 512;
+        let mut n_cur = batch.n_tokens();
+        
+        // Initialize decoder and sampler
+        let mut decoder = encoding_rs::UTF_8.new_decoder();
+        let mut sampler = LlamaSampler::greedy();
+        
+        // Generate tokens one by one
+        for _ in 0..max_tokens {
+            // Sample a token
+            let new_token = sampler.sample(&context, batch.n_tokens() - 1);
+            sampler.accept(new_token);
+            
+            // Check for end-of-sequence
+            if new_token == model.token_eos() {
+                break;
+            }
+            
+            // Convert token to string using the model
+            if let Ok(token_str) = model.token_to_piece(new_token, &mut decoder, true, None) {
+                response.push_str(&token_str);
+                
+                // Stop on end markers
+                if response.contains("<|im_end|>") || response.contains("</s>") {
+                    break;
+                }
+            }
+            
+            // Prepare next batch
+            batch.clear();
+            if let Err(e) = batch.add(new_token, n_cur, &[0], true) {
+                return format!("Batch error: {:?}", e);
+            }
+            n_cur += 1;
+            
+            // Decode the new token
+            if let Err(e) = context.decode(&mut batch) {
+                return format!("Decode error: {:?}", e);
+            }
+        }
+        
+        // Clean up the response and extract thinking
+        let cleaned = response
+            .split("<|im_end|>")
+            .next()
+            .unwrap_or(&response)
+            .trim()
+            .to_string();
+            
+        // Extract thinking content and final response
+        self.extract_thinking_and_response(&cleaned)
+    }
+    
+    /// Extract thinking process and return clean response (showing tags for testing)
+    fn extract_thinking_and_response(&self, text: &str) -> String {
+        // Find thinking tags
+        if let (Some(think_start), Some(think_end)) = (text.find("<think>"), text.find("</think>")) {
+            if think_start < think_end {
+                let thinking_content = &text[think_start + 7..think_end].trim();
+                
+                // Show thinking process if not empty
+                if !thinking_content.is_empty() {
+                    println!("\n🤔 AI Thinking:");
+                    println!("----------------------------------------");
+                    println!("{}", thinking_content);
+                    println!("----------------------------------------\n");
+                }
+            }
+        }
+        
+        // For testing: return original text with thinking tags visible
+        text.to_string()
     }
     
     /// Check if model is ready for inference
     pub fn is_ready(&self) -> bool {
-        self.session.is_some() && self.model_path.exists()
+        self.initialized && self.backend.is_some() && self.model.is_some() && self.model_path.exists()
     }
     
     /// Get model path
