@@ -174,19 +174,6 @@ let loader = UnstructuredLoader::new();
 let doc = loader.load("resume.pdf")?;
 println!("{} characters extracted", doc.content.len());
 ```
-
 ## License
 
-Licensed under either of
-
-- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
-- MIT license ([LICENSE-MIT](LICENSE-MIT))
-
-at your option.
-
-3. Write tests for your changes
-4. Submit a pull request
-
-## License
-
-Licensed under either of Apache License, Version 2.0 or MIT license at your option.
+Licensed under either of MIT license.
