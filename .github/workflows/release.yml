@@ -24,15 +24,14 @@ jobs:
             binary: cvxtract
 
           - name: Linux aarch64
-            os: ubuntu-22.04
+            os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
             artifact: cvxtract-linux-aarch64
             binary: cvxtract
-            cross: true
 
           # ── macOS ──────────────────────────────────────────────────────────
           - name: macOS x86_64
-            os: macos-13
+            os: macos-14
             target: x86_64-apple-darwin
             artifact: cvxtract-macos-x86_64
             binary: cvxtract
@@ -72,15 +71,8 @@ jobs:
 
       # ── Linux native dependencies ─────────────────────────────────────────
       - name: Install Linux build dependencies
-        if: runner.os == 'Linux' && !matrix.cross
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y cmake build-essential libssl-dev pkg-config
-
-      # ── Cross-compilation for Linux aarch64 ──────────────────────────────
-      - name: Install cross
-        if: matrix.cross
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cross
 
       # ── macOS dependencies ────────────────────────────────────────────────
       - name: Install macOS build dependencies
@@ -93,20 +85,14 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
 
       # ── Build ─────────────────────────────────────────────────────────────
-      - name: Build (cross)
-        if: matrix.cross
-        env:
-          COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
-        run: cross build --release --target ${{ matrix.target }} --bin cvxtract
-
       - name: Build (native, no extra features)
-        if: "!matrix.cross && !matrix.features"
+        if: "!matrix.features"
         env:
           COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
         run: cargo build --release --target ${{ matrix.target }} --bin cvxtract
 
       - name: Build (native, with features)
-        if: "!matrix.cross && matrix.features"
+        if: "matrix.features"
         env:
           COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
         run: cargo build --release --target ${{ matrix.target }} --bin cvxtract --features ${{ matrix.features }}
@@ -117,7 +103,9 @@ jobs:
         run: |
           mkdir -p dist
           cp target/${{ matrix.target }}/release/${{ matrix.binary }} dist/
-          cp README.md LICENSE-MIT LICENSE-APACHE dist/
+          for f in README.md LICENSE-MIT; do
+            [ -f "$f" ] && cp "$f" dist/ || true
+          done
           tar -czf ${{ matrix.artifact }}.tar.gz -C dist .
 
       - name: Package (Windows)
@@ -126,7 +114,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
           Copy-Item "target\${{ matrix.target }}\release\${{ matrix.binary }}" dist\
-          Copy-Item README.md, LICENSE-MIT, LICENSE-APACHE dist\
+          Copy-Item README.md, LICENSE-MIT dist\
           Compress-Archive -Path dist\* -DestinationPath "${{ matrix.artifact }}.zip"
 
       # ── Upload to GitHub Release ──────────────────────────────────────────
