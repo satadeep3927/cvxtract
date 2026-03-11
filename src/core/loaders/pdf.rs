@@ -15,7 +15,7 @@ impl PdfLoader {
     /// Extract text from PDF using pdf-extract crate
     fn extract_text_from_pdf(&self, data: &[u8]) -> Result<String> {
         pdf_extract::extract_text_from_mem(data)
-            .map_err(|e| LoaderError::ParseError(format!("PDF parsing error: {}", e)))
+            .map_err(|e| LoaderError::ParseError(format!("PDF parsing error: {e}")))
     }
 
     /// Extract text chunks from PDF content
@@ -33,7 +33,7 @@ impl PdfLoader {
             elements.push(DocumentElement {
                 element_type: "text_chunk".to_string(),
                 text: paragraph.to_string(),
-                metadata: Some(format!("chunk_{}", i)),
+                metadata: Some(format!("chunk_{i}")),
             });
         }
 
@@ -49,7 +49,7 @@ impl PdfLoader {
                 elements.push(DocumentElement {
                     element_type: "text_chunk".to_string(),
                     text: line.to_string(),
-                    metadata: Some(format!("line_{}", i)),
+                    metadata: Some(format!("line_{i}")),
                 });
             }
         }

@@ -17,11 +17,10 @@ impl std::fmt::Display for OpenAIError {
         match self {
             OpenAIError::ApiKeyNotFound(var) => write!(
                 f,
-                "{} not set — provide it at compile time or as a runtime env var",
-                var
+                "{var} not set — provide it at compile time or as a runtime env var"
             ),
-            OpenAIError::Request(msg) => write!(f, "Request error: {}", msg),
-            OpenAIError::Parse(msg) => write!(f, "Parse error: {}", msg),
+            OpenAIError::Request(msg) => write!(f, "Request error: {msg}"),
+            OpenAIError::Parse(msg) => write!(f, "Parse error: {msg}"),
         }
     }
 }
@@ -75,7 +74,7 @@ impl OpenAI {
     }
 
     /// Use the official OpenAI API. Reads `OPENAI_API_KEY` from the environment.
-    pub fn openai(model: impl Into<String>) -> Result<Self, OpenAIError> {
+    pub fn for_openai(model: impl Into<String>) -> Result<Self, OpenAIError> {
         Self::from_env(OPENAI_BASE_URL, "OPENAI_API_KEY", model)
     }
 
@@ -124,10 +123,10 @@ impl OpenAI {
         }
 
         match req.send().await {
-            Err(e) => format!("Error: {}", e),
+            Err(e) => format!("Error: {e}"),
             Ok(resp) if !resp.status().is_success() => {
                 let body = resp.text().await.unwrap_or_default();
-                format!("Error: {}", body)
+                format!("Error: {body}")
             }
             Ok(resp) => resp
                 .json::<ChatResponse>()

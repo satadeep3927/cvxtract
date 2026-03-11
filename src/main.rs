@@ -1,7 +1,4 @@
-mod core;
-
-use core::extractor::Extractor;
-use core::Model;
+use cvxtract::{Extractor, Model};
 
 #[tokio::main]
 async fn main() {
@@ -9,13 +6,13 @@ async fn main() {
 
     let resume = extractor
         .extract_resume(
-            r"C:\Users\BIT1053\Downloads\Vikas_A_ERP_Specialist_&amp;_Solution_Architect.pdf"
+            r"C:\Users\BIT1053\Downloads\Vikas_A_ERP_Specialist_&_Solution_Architect.pdf"
                 .into(),
         )
         .await;
 
     match resume {
-        Ok(r) => println!("{:#?}", r),
+        Ok(r) => println!("{r:#?}"),
         Err(e) => eprintln!("Extraction failed: {e}"),
     }
 }

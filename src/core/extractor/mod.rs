@@ -1,32 +1,65 @@
+pub mod error;
 pub mod resume;
 pub mod schema;
 
 use crate::core::{Model, UnstructuredLoader};
+use error::ExtractionError;
 use schemars::JsonSchema;
 use serde::de::DeserializeOwned;
 
+/// Orchestrates document loading and LLM-powered structured extraction.
+///
+/// Create an `Extractor` with a [`Model`] provider, then call [`Extractor::extract`]
+/// (generic) or [`Extractor::extract_resume`] (built-in Resume type).
+///
+/// # Example
+/// ```no_run
+/// use cvxtract::{Extractor, Model};
+///
+/// # #[tokio::main] async fn main() {
+/// let mut extractor = Extractor::new(Some(Model::from_local()));
+/// let resume = extractor.extract_resume("cv.pdf".into()).await.unwrap();
+/// println!("{:#?}", resume);
+/// # }
+/// ```
 pub struct Extractor {
     model: Model,
 }
 
+impl Default for Extractor {
+    fn default() -> Self {
+        Self::new(None)
+    }
+}
+
 impl Extractor {
+    /// Create a new `Extractor`.
+    ///
+    /// If `model` is `None`, the local on-device provider (`Model::from_local()`) is used.
     pub fn new(model: Option<Model>) -> Self {
         Self {
-            model: model.unwrap_or_else(|| Model::from_local()),
+            model: model.unwrap_or_else(Model::from_local),
         }
     }
 
     /// Returns a placeholder JSON value that mirrors the shape of `T`.
-    /// e.g. `{"name": "string", "address": {"city": "string"}}`
+    ///
+    /// Useful for debugging the auto-generated extraction prompt.
+    /// Example output: `{"name": "string", "address": {"city": "string"}}`
     pub fn output_shape<T: JsonSchema>(&self) -> serde_json::Value {
         schema::representation_of::<T>()
     }
 
-    /// Loads text from `path`, sends it to the model, then deserialises the response as `T`.
-    pub async fn extract<T>(
-        &mut self,
-        path: std::path::PathBuf,
-    ) -> Result<T, Box<dyn std::error::Error>>
+    /// Load the document at `path`, prompt the model, and deserialise the response as `T`.
+    ///
+    /// `T` must implement both [`serde::Deserialize`] and [`schemars::JsonSchema`];
+    /// the schema is used to auto-generate the JSON shape hint in the prompt.
+    ///
+    /// # Errors
+    /// Returns [`ExtractionError::LoadError`] if the document cannot be read,
+    /// [`ExtractionError::ModelError`] if the model returns an empty response, or
+    /// [`ExtractionError::ParseError`] if the JSON cannot be deserialised into `T`.
+    pub async fn extract<T>(&mut self, path: std::path::PathBuf) -> Result<T, ExtractionError>
     where
         T: DeserializeOwned + JsonSchema,
     {
@@ -48,26 +81,23 @@ impl Extractor {
             text = text,
         );
         let raw = self.model.generate(&prompt).await;
-        println!("Raw model output: {}", raw);
-        // Strip markdown fences (```json ... ``` or ``` ... ```)
-        let json_str = raw
-            .trim()
-            .strip_prefix("```json")
-            .or_else(|| raw.trim().strip_prefix("```"))
-            .map(|s| s.trim_end_matches("```").trim())
-            .unwrap_or(raw.trim());
-
-        let value = serde_json::from_str::<T>(json_str)?;
-
+        log::debug!("Raw model output: {raw}");
+        let value = serde_json::from_str::<T>(strip_fences(&raw))?;
         Ok(value)
     }
 
-    /// Convenience method — extracts into the built-in [`resume::Resume`] type
-    /// using a prompt that is fine-tuned for that exact shape.
+    /// Extract into the built-in [`resume::Resume`] type using a fine-tuned prompt.
+    ///
+    /// This is equivalent to [`Extractor::extract::<Resume>`] but uses a hand-crafted
+    /// prompt with detailed rules for education vs. certifications, date handling, etc.,
+    /// which produces more reliable results than the auto-generated schema prompt.
+    ///
+    /// # Errors
+    /// Same as [`Extractor::extract`].
     pub async fn extract_resume(
         &mut self,
         path: std::path::PathBuf,
-    ) -> Result<resume::Resume, Box<dyn std::error::Error>> {
+    ) -> Result<resume::Resume, ExtractionError> {
         let loader = UnstructuredLoader::new();
         let text = loader.extract_text(path)?;
         let prompt = format!(
@@ -110,17 +140,20 @@ impl Extractor {
                \"awards\": [{{\"title\": \"string\", \"issuer\": \"string|null\", \"date\": null, \"description\": \"string|null\"}}]\n\
              }}\n\n\
              CV:\n{text}",
-            text = text,
         );
         let raw = self.model.generate(&prompt).await;
-        println!("Raw model output: {}", raw);
-        let json_str = raw
-            .trim()
-            .strip_prefix("```json")
-            .or_else(|| raw.trim().strip_prefix("```"))
-            .map(|s| s.trim_end_matches("```").trim())
-            .unwrap_or(raw.trim());
-        let value = serde_json::from_str::<resume::Resume>(json_str)?;
+        log::debug!("Raw model output: {raw}");
+        let value = serde_json::from_str::<resume::Resume>(strip_fences(&raw))?;
         Ok(value)
     }
 }
+
+/// Strip optional markdown code fences from an LLM response.
+fn strip_fences(raw: &str) -> &str {
+    let s = raw.trim();
+    let s = s.strip_prefix("```json").unwrap_or(s);
+    let s = s.strip_prefix("```").unwrap_or(s);
+    let s = s.trim_end_matches("```");
+    s.trim()
+}
+

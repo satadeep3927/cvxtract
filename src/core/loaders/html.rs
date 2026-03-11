@@ -80,7 +80,7 @@ impl HtmlLoader {
             elements.push(DocumentElement {
                 element_type: "text_chunk".to_string(),
                 text: paragraph.to_string(),
-                metadata: Some(format!("chunk_{}", i)),
+                metadata: Some(format!("chunk_{i}")),
             });
         }
 

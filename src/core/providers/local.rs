@@ -1,13 +1,11 @@
 use llama_cpp_2::{
-    context::{params::LlamaContextParams, LlamaContext},
+    context::params::LlamaContextParams,
     llama_backend::LlamaBackend,
     llama_batch::LlamaBatch,
     model::{params::LlamaModelParams, AddBos, LlamaModel},
     sampling::LlamaSampler,
 };
-use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 pub struct Local {
     backend: Option<LlamaBackend>,
@@ -18,24 +16,30 @@ pub struct Local {
 
 #[derive(Debug)]
 pub enum LocalError {
-    LoadError(String),
-    InferenceError(String),
-    DownloadError(String),
-    ContextError(String),
+    Load(String),
+    Inference(String),
+    Download(String),
+    Context(String),
 }
 
 impl std::fmt::Display for LocalError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            LocalError::LoadError(msg) => write!(f, "Model load error: {}", msg),
-            LocalError::InferenceError(msg) => write!(f, "Inference error: {}", msg),
-            LocalError::DownloadError(msg) => write!(f, "Download error: {}", msg),
-            LocalError::ContextError(msg) => write!(f, "Context error: {}", msg),
+            LocalError::Load(msg) => write!(f, "Model load error: {msg}"),
+            LocalError::Inference(msg) => write!(f, "Inference error: {msg}"),
+            LocalError::Download(msg) => write!(f, "Download error: {msg}"),
+            LocalError::Context(msg) => write!(f, "Context error: {msg}"),
         }
     }
 }
 
 impl std::error::Error for LocalError {}
+
+impl Default for Local {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl Local {
     pub fn new() -> Self {
@@ -62,18 +66,29 @@ impl Local {
 
         // Initialize the llama backend
         let backend = LlamaBackend::init()
-            .map_err(|e| LocalError::LoadError(format!("Failed to initialize backend: {:?}", e)))?;
+            .map_err(|e| LocalError::Load(format!("Failed to initialize backend: {e:?}")))?;
 
         self.backend = Some(backend);
 
-        // Load the model with default parameters
-        let model_params = LlamaModelParams::default();
+        // Offload all layers to GPU when a GPU backend feature is compiled in.
+        // llama.cpp automatically falls back to CPU for layers that don't fit in VRAM,
+        // so this is safe even when the GPU has limited memory.
+        #[cfg(any(feature = "cuda", feature = "metal", feature = "vulkan"))]
+        let gpu_layers = u32::MAX;
+        #[cfg(not(any(feature = "cuda", feature = "metal", feature = "vulkan")))]
+        let gpu_layers = 0u32;
+
+        if gpu_layers > 0 {
+            println!("GPU backend enabled — offloading layers to GPU (llama.cpp will auto-fit VRAM)");
+        }
+
+        let model_params = LlamaModelParams::default().with_n_gpu_layers(gpu_layers);
         let model = LlamaModel::load_from_file(
             self.backend.as_ref().unwrap(),
             &self.model_path,
             &model_params,
         )
-        .map_err(|e| LocalError::LoadError(format!("Failed to load Qwen 3.5 model: {:?}", e)))?;
+        .map_err(|e| LocalError::Load(format!("Failed to load Qwen 3.5 model: {e:?}")))?;
 
         self.model = Some(model);
         self.initialized = true;
@@ -100,7 +115,7 @@ impl Local {
         // Create cache directory
         if let Some(parent) = self.model_path.parent() {
             std::fs::create_dir_all(parent).map_err(|e| {
-                LocalError::DownloadError(format!("Failed to create cache dir: {}", e))
+                LocalError::Download(format!("Failed to create cache dir: {e}"))
             })?;
         }
 
@@ -112,10 +127,10 @@ impl Local {
             .get(url)
             .send()
             .await
-            .map_err(|e| LocalError::DownloadError(format!("HTTP request failed: {}", e)))?;
+            .map_err(|e| LocalError::Download(format!("HTTP request failed: {e}")))?;
 
         if !response.status().is_success() {
-            return Err(LocalError::DownloadError(format!(
+            return Err(LocalError::Download(format!(
                 "HTTP error: {}",
                 response.status()
             )));
@@ -125,24 +140,24 @@ impl Local {
 
         let mut file = tokio::fs::File::create(&self.model_path)
             .await
-            .map_err(|e| LocalError::DownloadError(format!("Failed to create file: {}", e)))?;
+            .map_err(|e| LocalError::Download(format!("Failed to create file: {e}")))?;
 
         let mut downloaded = 0u64;
         let mut stream = response.bytes_stream();
 
         while let Some(chunk) = stream.next().await {
             let chunk = chunk
-                .map_err(|e| LocalError::DownloadError(format!("Download chunk error: {}", e)))?;
+                .map_err(|e| LocalError::Download(format!("Download chunk error: {e}")))?;
 
             file.write_all(&chunk)
                 .await
-                .map_err(|e| LocalError::DownloadError(format!("Write error: {}", e)))?;
+                .map_err(|e| LocalError::Download(format!("Write error: {e}")))?;
 
             downloaded += chunk.len() as u64;
 
             if total_size > 0 {
                 let progress = (downloaded as f64 / total_size as f64) * 100.0;
-                print!("\rDownloading AI model: {:.0}%", progress);
+                print!("\rDownloading AI model: {progress:.0}%");
                 use std::io::{self, Write};
                 io::stdout().flush().unwrap();
             }
@@ -157,7 +172,7 @@ impl Local {
         // Auto-initialize if not done yet
         if !self.initialized {
             if let Err(e) = self.initialize().await {
-                return format!("Initialization error: {}", e);
+                return format!("Initialization error: {e}");
             }
         }
 
@@ -182,22 +197,21 @@ impl Local {
         let mut context = match model.new_context(backend, context_params) {
             Ok(ctx) => ctx,
             Err(e) => {
-                return format!("Failed to create context: {:?}", e);
+                return format!("Failed to create context: {e:?}");
             }
         };
 
         // Build the complete prompt with Qwen 3.5 chat template.
         // The <think> prefix activates Qwen 3.5's native thinking mode — no system instructions needed.
         let formatted_prompt = format!(
-            "<|im_start|>system\nYou are a helpful AI assistant specialized in analyzing resumes and CVs.<|im_end|>\n<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n<think>\n",
-            prompt
+            "<|im_start|>system\nYou are a helpful AI assistant specialized in analyzing resumes and CVs.<|im_end|>\n<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n<think>\n"
         );
 
         // Tokenize the prompt using the model
         let tokens = match model.str_to_token(&formatted_prompt, AddBos::Always) {
             Ok(tokens) => tokens,
             Err(e) => {
-                return format!("Tokenization error: {:?}", e);
+                return format!("Tokenization error: {e:?}");
             }
         };
 
@@ -207,17 +221,17 @@ impl Local {
         for (i, token) in (0_i32..).zip(tokens.into_iter()) {
             let is_last = i == last_index;
             if let Err(e) = batch.add(token, i, &[0], is_last) {
-                return format!("Batch add error: {:?}", e);
+                return format!("Batch add error: {e:?}");
             }
         }
 
         // Evaluate the prompt tokens
         if let Err(e) = context.decode(&mut batch) {
-            return format!("Decode error: {:?}", e);
+            return format!("Decode error: {e:?}");
         }
 
         let mut response = String::new();
-        let max_tokens = 10_00_000;
+        let max_tokens = 1_000_000;
         let mut n_cur = batch.n_tokens();
 
         // Initialize decoder and sampler
@@ -248,13 +262,13 @@ impl Local {
             // Prepare next batch
             batch.clear();
             if let Err(e) = batch.add(new_token, n_cur, &[0], true) {
-                return format!("Batch error: {:?}", e);
+                return format!("Batch error: {e:?}");
             }
             n_cur += 1;
 
             // Decode the new token
             if let Err(e) = context.decode(&mut batch) {
-                return format!("Decode error: {:?}", e);
+                return format!("Decode error: {e:?}");
             }
         }
 

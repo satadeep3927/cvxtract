@@ -2,17 +2,29 @@
 name = "cvxtract"
 version = "0.1.0"
 edition = "2021"
-description = "A Rust library for loading and extracting content from resumes/CVs in multiple formats"
+description = "LLM-powered structured extraction from CVs/resumes — PDF, DOCX, HTML, TXT input; typed Rust structs output."
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/yourusername/cvxtract"
-keywords = ["resume", "cv", "document", "parser", "extraction"]
+repository = "https://github.com/satadeep3927/cvxtract"
+documentation = "https://docs.rs/cvxtract"
+readme = "README.md"
+keywords = ["resume", "cv", "llm", "extraction", "document"]
+categories = ["text-processing", "parser-implementations", "data-structures"]
+exclude = [".cache/", "target/"]
+
+[lib]
+name = "cvxtract"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cvxtract"
+path = "src/main.rs"
 
 [dependencies]
 pdf-extract = "0.10.0"
 zip = "0.6"
 quick-xml = "0.31"
 
-# LLM inference dependencies  
+# LLM inference dependencies
 reqwest = { version = "0.11", features = ["stream", "json"] }
 tokio = { version = "1.0", features = ["full"] }
 tokio-util = { version = "0.7", features = ["codec"] }
@@ -21,9 +33,16 @@ serde_json = "1.0"
 schemars = "0.8"
 sha2 = "0.10"
 futures-util = "0.3"
-llama-cpp-2 = "0.1.138"
+llama-cpp-2 = { version = "0.1.138", features = [] }
 encoding_rs = "0.8"
+log = "0.4"
+
+[features]
+# Enable GPU acceleration (requires the respective toolkit at compile time).
+# Example: `cargo build --release --features cuda`
+cuda   = ["llama-cpp-2/cuda"]    # NVIDIA CUDA
+metal  = ["llama-cpp-2/metal"]   # Apple Silicon / macOS Metal
+vulkan = ["llama-cpp-2/vulkan"]  # Cross-platform Vulkan (AMD/Intel/NVIDIA)
 
 [dev-dependencies]
-# For testing
-# tempfile = "3.0"
+env_logger = "0.11"

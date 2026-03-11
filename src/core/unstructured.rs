@@ -5,13 +5,31 @@ use super::loaders::{
 use std::collections::HashMap;
 use std::path::Path;
 
-/// Main UnstructuredLoader that automatically detects file format and delegates to appropriate loader
+/// Loads CV/resume documents in any supported format, automatically detecting the type.
+///
+/// Supported formats: PDF, DOCX, HTML, plain text.
+/// Format detection is tried by file extension first, then by magic bytes.
+///
+/// # Example
+/// ```no_run
+/// use cvxtract::UnstructuredLoader;
+///
+/// let loader = UnstructuredLoader::new();
+/// let doc = loader.load("resume.pdf").unwrap();
+/// println!("{}", doc.content);
+/// ```
 pub struct UnstructuredLoader {
     loaders: HashMap<FileType, Box<dyn DocumentLoader>>,
 }
 
+impl Default for UnstructuredLoader {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl UnstructuredLoader {
-    /// Create a new UnstructuredLoader with all supported format loaders
+    /// Create a new `UnstructuredLoader` with all built-in format loaders registered.
     pub fn new() -> Self {
         let mut loaders: HashMap<FileType, Box<dyn DocumentLoader>> = HashMap::new();
 
@@ -50,8 +68,7 @@ impl UnstructuredLoader {
             )
         } else {
             Err(LoaderError::UnsupportedFormat(format!(
-                "Unsupported file format: {:?}",
-                content_type
+                "Unsupported file format: {content_type:?}"
             )))
         }
     }
@@ -67,8 +84,7 @@ impl UnstructuredLoader {
             loader.load_from_bytes(data, filename)
         } else {
             Err(LoaderError::UnsupportedFormat(format!(
-                "No loader available for format: {:?}",
-                format
+                "No loader available for format: {format:?}"
             )))
         }
     }
@@ -152,12 +168,6 @@ impl UnstructuredLoader {
 
         walk_dir(dir.as_ref(), &mut files)?;
         Ok(files)
-    }
-}
-
-impl Default for UnstructuredLoader {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

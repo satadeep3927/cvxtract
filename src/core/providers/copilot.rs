@@ -23,9 +23,9 @@ impl std::fmt::Display for CopilotError {
                 f,
                 "COPILOT_TOKEN not set — provide it at compile time or as a runtime env var"
             ),
-            CopilotError::TokenExchange(msg) => write!(f, "Token exchange error: {}", msg),
-            CopilotError::Request(msg) => write!(f, "Request error: {}", msg),
-            CopilotError::Parse(msg) => write!(f, "Parse error: {}", msg),
+            CopilotError::TokenExchange(msg) => write!(f, "Token exchange error: {msg}"),
+            CopilotError::Request(msg) => write!(f, "Request error: {msg}"),
+            CopilotError::Parse(msg) => write!(f, "Parse error: {msg}"),
         }
     }
 }
@@ -95,7 +95,7 @@ impl Copilot {
             if !response.status().is_success() {
                 let status = response.status();
                 let body = response.text().await.unwrap_or_default();
-                return Err(CopilotError::TokenExchange(format!("{}: {}", status, body)));
+                return Err(CopilotError::TokenExchange(format!("{status}: {body}")));
             }
 
             let data: serde_json::Value = response
@@ -122,7 +122,7 @@ impl Copilot {
     pub async fn generate(&self, prompt: &str) -> String {
         if !self.is_token_valid() {
             if let Err(e) = self.refresh_token().await {
-                return format!("Error: {}", e);
+                return format!("Error: {e}");
             }
         }
 
@@ -147,7 +147,7 @@ impl Copilot {
         let response = self
             .client
             .post(CHAT_ENDPOINT)
-            .header("Authorization", format!("Bearer {}", api_key))
+            .header("Authorization", format!("Bearer {api_key}"))
             .header("Content-Type", "application/json")
             .header("Editor-Version", "vscode/1.103.1")
             .header("Editor-Plugin-Version", "copilot.vim/1.16.0")
@@ -158,10 +158,10 @@ impl Copilot {
             .await;
 
         match response {
-            Err(e) => format!("Error: {}", e),
+            Err(e) => format!("Error: {e}"),
             Ok(resp) if !resp.status().is_success() => {
                 let body = resp.text().await.unwrap_or_default();
-                format!("Error: {}", body)
+                format!("Error: {body}")
             }
             Ok(resp) => resp
                 .json::<ChatResponse>()

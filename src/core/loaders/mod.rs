@@ -64,10 +64,10 @@ pub enum LoaderError {
 impl fmt::Display for LoaderError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            LoaderError::IoError(err) => write!(f, "IO error: {}", err),
-            LoaderError::FormatError(msg) => write!(f, "Format error: {}", msg),
-            LoaderError::UnsupportedFormat(format) => write!(f, "Unsupported format: {}", format),
-            LoaderError::ParseError(msg) => write!(f, "Parse error: {}", msg),
+            LoaderError::IoError(err) => write!(f, "IO error: {err}"),
+            LoaderError::FormatError(msg) => write!(f, "Format error: {msg}"),
+            LoaderError::UnsupportedFormat(format) => write!(f, "Unsupported format: {format}"),
+            LoaderError::ParseError(msg) => write!(f, "Parse error: {msg}"),
         }
     }
 }

@@ -31,7 +31,7 @@ impl DocumentLoader for TextLoader {
             .map(|(i, paragraph)| DocumentElement {
                 element_type: "paragraph".to_string(),
                 text: paragraph.trim().to_string(),
-                metadata: Some(format!("paragraph_{}", i)),
+                metadata: Some(format!("paragraph_{i}")),
             })
             .collect();
 
@@ -60,7 +60,7 @@ impl DocumentLoader for TextLoader {
             .map(|(i, paragraph)| DocumentElement {
                 element_type: "paragraph".to_string(),
                 text: paragraph.trim().to_string(),
-                metadata: Some(format!("paragraph_{}", i)),
+                metadata: Some(format!("paragraph_{i}")),
             })
             .collect();
 

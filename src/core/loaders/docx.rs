@@ -19,17 +19,17 @@ impl DocxLoader {
     fn extract_docx_text(data: &[u8]) -> Result<String> {
         let cursor = std::io::Cursor::new(data);
         let mut zip = ZipArchive::new(cursor)
-            .map_err(|e| LoaderError::ParseError(format!("Invalid DOCX: {}", e)))?;
+            .map_err(|e| LoaderError::ParseError(format!("Invalid DOCX: {e}")))?;
 
         // Read main document
         let mut document = zip
             .by_name("word/document.xml")
-            .map_err(|e| LoaderError::ParseError(format!("No document.xml: {}", e)))?;
+            .map_err(|e| LoaderError::ParseError(format!("No document.xml: {e}")))?;
 
         let mut xml_content = String::new();
         document
             .read_to_string(&mut xml_content)
-            .map_err(|e| LoaderError::ParseError(format!("Read error: {}", e)))?;
+            .map_err(|e| LoaderError::ParseError(format!("Read error: {e}")))?;
 
         // Extract text from XML
         let mut reader = Reader::from_str(&xml_content);
@@ -53,7 +53,7 @@ impl DocxLoader {
                     text.push('\n'); // Paragraph break
                 }
                 Ok(Event::Eof) => break,
-                Err(e) => return Err(LoaderError::ParseError(format!("XML error: {}", e))),
+                Err(e) => return Err(LoaderError::ParseError(format!("XML error: {e}"))),
                 _ => {}
             }
         }
