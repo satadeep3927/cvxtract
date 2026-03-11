@@ -115,7 +115,6 @@ pub mod utils {
             match ext.to_string_lossy().to_lowercase().as_str() {
                 "pdf" => FileType::Pdf,
                 "docx" => FileType::Docx,
-                "doc" => FileType::Docx, // Treat legacy .doc as .docx for now
                 "txt" | "text" => FileType::Text,
                 "html" | "htm" => FileType::Html,
                 "rtf" => FileType::Rtf,
