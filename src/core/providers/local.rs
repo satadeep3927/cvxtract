@@ -5,7 +5,7 @@ use llama_cpp_2::{
     model::{params::LlamaModelParams, AddBos, LlamaModel},
     sampling::LlamaSampler,
 };
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub struct Local {
     backend: Option<LlamaBackend>,
@@ -17,18 +17,14 @@ pub struct Local {
 #[derive(Debug)]
 pub enum LocalError {
     Load(String),
-    Inference(String),
     Download(String),
-    Context(String),
 }
 
 impl std::fmt::Display for LocalError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             LocalError::Load(msg) => write!(f, "Model load error: {msg}"),
-            LocalError::Inference(msg) => write!(f, "Inference error: {msg}"),
             LocalError::Download(msg) => write!(f, "Download error: {msg}"),
-            LocalError::Context(msg) => write!(f, "Context error: {msg}"),
         }
     }
 }
@@ -79,7 +75,9 @@ impl Local {
         let gpu_layers = 0u32;
 
         if gpu_layers > 0 {
-            println!("GPU backend enabled — offloading layers to GPU (llama.cpp will auto-fit VRAM)");
+            println!(
+                "GPU backend enabled — offloading layers to GPU (llama.cpp will auto-fit VRAM)"
+            );
         }
 
         let model_params = LlamaModelParams::default().with_n_gpu_layers(gpu_layers);
@@ -114,9 +112,8 @@ impl Local {
 
         // Create cache directory
         if let Some(parent) = self.model_path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| {
-                LocalError::Download(format!("Failed to create cache dir: {e}"))
-            })?;
+            std::fs::create_dir_all(parent)
+                .map_err(|e| LocalError::Download(format!("Failed to create cache dir: {e}")))?;
         }
 
         let url =
@@ -146,8 +143,8 @@ impl Local {
         let mut stream = response.bytes_stream();
 
         while let Some(chunk) = stream.next().await {
-            let chunk = chunk
-                .map_err(|e| LocalError::Download(format!("Download chunk error: {e}")))?;
+            let chunk =
+                chunk.map_err(|e| LocalError::Download(format!("Download chunk error: {e}")))?;
 
             file.write_all(&chunk)
                 .await
@@ -310,10 +307,5 @@ impl Local {
             && self.backend.is_some()
             && self.model.is_some()
             && self.model_path.exists()
-    }
-
-    /// Get model path
-    pub fn model_path(&self) -> &Path {
-        &self.model_path
     }
 }

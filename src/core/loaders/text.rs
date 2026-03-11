@@ -70,12 +70,4 @@ impl DocumentLoader for TextLoader {
             elements,
         })
     }
-
-    fn supports_format(&self, file_type: &FileType) -> bool {
-        matches!(file_type, FileType::Text)
-    }
-
-    fn primary_format(&self) -> FileType {
-        FileType::Text
-    }
 }

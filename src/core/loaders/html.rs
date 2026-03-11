@@ -128,12 +128,4 @@ impl DocumentLoader for HtmlLoader {
             elements,
         })
     }
-
-    fn supports_format(&self, file_type: &FileType) -> bool {
-        matches!(file_type, FileType::Html)
-    }
-
-    fn primary_format(&self) -> FileType {
-        FileType::Html
-    }
 }

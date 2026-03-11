@@ -88,12 +88,6 @@ impl OpenAI {
         Self::new(OLLAMA_BASE_URL, "", model)
     }
 
-    /// Override the system prompt.
-    pub fn with_system_prompt(mut self, prompt: impl Into<String>) -> Self {
-        self.system_prompt = prompt.into();
-        self
-    }
-
     pub async fn generate(&self, prompt: &str) -> String {
         let request = ChatRequest {
             model: self.model.clone(),

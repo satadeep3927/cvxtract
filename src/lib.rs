@@ -78,8 +78,8 @@ mod core;
 
 pub use core::extractor::error::ExtractionError;
 pub use core::extractor::resume::{
-    Award, Certification, DateRange, Education, Experience, Language, PartialDate, Project,
-    Resume, SkillGroup,
+    Award, Certification, DateRange, Education, Experience, Language, PartialDate, Project, Resume,
+    SkillGroup,
 };
 pub use core::extractor::Extractor;
 pub use core::loaders::{Document, DocumentElement, DocumentMetadata, FileType, LoaderError};

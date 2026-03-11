@@ -97,12 +97,4 @@ impl DocumentLoader for PdfLoader {
             elements,
         })
     }
-
-    fn supports_format(&self, file_type: &FileType) -> bool {
-        matches!(file_type, FileType::Pdf)
-    }
-
-    fn primary_format(&self) -> FileType {
-        FileType::Pdf
-    }
 }

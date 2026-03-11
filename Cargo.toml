@@ -3,7 +3,7 @@ name = "cvxtract"
 version = "0.1.0"
 edition = "2021"
 description = "LLM-powered structured extraction from CVs/resumes — PDF, DOCX, HTML, TXT input; typed Rust structs output."
-license = "MIT OR Apache-2.0"
+license = "MIT"
 repository = "https://github.com/satadeep3927/cvxtract"
 documentation = "https://docs.rs/cvxtract"
 readme = "README.md"
@@ -36,6 +36,7 @@ futures-util = "0.3"
 llama-cpp-2 = { version = "0.1.138", features = [] }
 encoding_rs = "0.8"
 log = "0.4"
+clap = { version = "4", features = ["derive"] }
 
 [features]
 # Enable GPU acceleration (requires the respective toolkit at compile time).

@@ -1,8 +1,8 @@
 use schemars::JsonSchema;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Year-always-present, month/day optional.
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct PartialDate {
     /// null only when the year is genuinely unknown (e.g. ongoing education without dates)
     pub year: Option<u16>,
@@ -11,7 +11,7 @@ pub struct PartialDate {
 }
 
 /// Half-open date range. `start` and `end` are both null when dates are unknown.
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct DateRange {
     /// null only when the start date is genuinely unknown
     pub start: Option<PartialDate>,
@@ -19,7 +19,7 @@ pub struct DateRange {
     pub end: Option<PartialDate>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Experience {
     pub company: Option<String>,
     pub role: String,
@@ -31,7 +31,7 @@ pub struct Experience {
     pub highlights: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Education {
     pub institution: String,
     /// e.g. "Bachelor of Science", "MBA"
@@ -44,14 +44,14 @@ pub struct Education {
 }
 
 /// Skills can be flat or grouped by category.
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct SkillGroup {
     /// e.g. "Languages", "Frameworks", "Tools" — null if ungrouped
     pub category: Option<String>,
     pub items: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Project {
     pub name: String,
     pub description: Option<String>,
@@ -60,7 +60,7 @@ pub struct Project {
     pub duration: Option<DateRange>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Certification {
     pub name: String,
     pub issuer: Option<String>,
@@ -70,14 +70,14 @@ pub struct Certification {
     pub url: Option<String>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Language {
     pub language: String,
     /// e.g. "Native", "Fluent", "Intermediate", "Basic"
     pub proficiency: Option<String>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Award {
     pub title: String,
     pub issuer: Option<String>,
@@ -86,7 +86,7 @@ pub struct Award {
 }
 
 /// Top-level resume — covers the vast majority of real-world CVs.
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Resume {
     pub name: String,
     pub email: Option<String>,

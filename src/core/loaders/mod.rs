@@ -96,12 +96,6 @@ pub trait DocumentLoader {
 
     /// Load a document from raw bytes
     fn load_from_bytes(&self, data: &[u8], filename: Option<&str>) -> Result<Document>;
-
-    /// Check if this loader supports the given file type
-    fn supports_format(&self, file_type: &FileType) -> bool;
-
-    /// Get the primary format this loader handles
-    fn primary_format(&self) -> FileType;
 }
 
 /// Utility functions for file type detection

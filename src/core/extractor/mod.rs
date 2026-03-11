@@ -156,4 +156,3 @@ fn strip_fences(raw: &str) -> &str {
     let s = s.trim_end_matches("```");
     s.trim()
 }
-
