@@ -1,11 +1,21 @@
 mod core;
 
+use core::extractor::Extractor;
 use core::Model;
 
 #[tokio::main]
 async fn main() {
-    let mut model = Model::from_local();
+    let mut extractor = Extractor::new(Some(Model::from_local()));
 
-    let response = model.generate("What is the capital of France?").await;
-    println!("Response: {}", response);
+    let resume = extractor
+        .extract_resume(
+            r"C:\Users\BIT1053\Downloads\Vikas_A_ERP_Specialist_&amp;_Solution_Architect.pdf"
+                .into(),
+        )
+        .await;
+
+    match resume {
+        Ok(r) => println!("{:#?}", r),
+        Err(e) => eprintln!("Extraction failed: {e}"),
+    }
 }

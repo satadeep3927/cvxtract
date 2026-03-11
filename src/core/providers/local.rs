@@ -177,7 +177,7 @@ impl Local {
 
         // Create context with sufficient size for large CVs
         let context_params =
-            LlamaContextParams::default().with_n_ctx(std::num::NonZeroU32::new(8192));
+            LlamaContextParams::default().with_n_ctx(std::num::NonZeroU32::new(81920));
 
         let mut context = match model.new_context(backend, context_params) {
             Ok(ctx) => ctx,
@@ -202,7 +202,7 @@ impl Local {
         };
 
         // Create batch and add tokens
-        let mut batch = LlamaBatch::new(512, 1);
+        let mut batch = LlamaBatch::new(5120, 1);
         let last_index = tokens.len() as i32 - 1;
         for (i, token) in (0_i32..).zip(tokens.into_iter()) {
             let is_last = i == last_index;
