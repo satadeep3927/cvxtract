@@ -1,6 +1,6 @@
 [package]
 name = "cvxtract"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "LLM-powered structured extraction from CVs/resumes — PDF, DOCX, HTML, TXT input; typed Rust structs output."
 license = "MIT"
