@@ -10,6 +10,7 @@ pub struct ChatMessage {
 pub struct ChatRequest {
     pub model: String,
     pub messages: Vec<ChatMessage>,
+    pub temperature: Option<f32>,
 }
 
 #[derive(Debug, Deserialize)]

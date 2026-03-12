@@ -22,9 +22,9 @@ pub struct DateRange {
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Experience {
     pub company: Option<String>,
-    pub role: String,
+    pub role: Option<String>,
     pub location: Option<String>,
-    pub duration: DateRange,
+    pub duration: Option<DateRange>,
     /// Short paragraph summarising responsibilities
     pub summary: Option<String>,
     /// Key bullet-point achievements or responsibilities
@@ -33,12 +33,12 @@ pub struct Experience {
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Education {
-    pub institution: String,
+    pub institution: Option<String>,
     /// e.g. "Bachelor of Science", "MBA"
     pub degree: Option<String>,
     /// e.g. "Computer Science"
     pub field: Option<String>,
-    pub duration: DateRange,
+    pub duration: Option<DateRange>,
     /// GPA, percentage, or grade classification
     pub grade: Option<String>,
 }
@@ -53,7 +53,7 @@ pub struct SkillGroup {
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Project {
-    pub name: String,
+    pub name: Option<String>,
     pub description: Option<String>,
     pub technologies: Vec<String>,
     pub url: Option<String>,
@@ -62,7 +62,7 @@ pub struct Project {
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Certification {
-    pub name: String,
+    pub name: Option<String>,
     pub issuer: Option<String>,
     pub issued: Option<PartialDate>,
     pub expiry: Option<PartialDate>,
@@ -72,14 +72,14 @@ pub struct Certification {
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Language {
-    pub language: String,
+    pub language: Option<String>,
     /// e.g. "Native", "Fluent", "Intermediate", "Basic"
     pub proficiency: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Award {
-    pub title: String,
+    pub title: Option<String>,
     pub issuer: Option<String>,
     pub date: Option<PartialDate>,
     pub description: Option<String>,
@@ -88,7 +88,7 @@ pub struct Award {
 /// Top-level resume — covers the vast majority of real-world CVs.
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Resume {
-    pub name: String,
+    pub name: Option<String>,
     pub email: Option<String>,
     pub phone: Option<String>,
     /// City, country, or full address

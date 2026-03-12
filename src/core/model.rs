@@ -38,9 +38,11 @@ impl Model {
     /// `.cache/models/`. No API key or network access is required after download.
     /// Compile with `--features cuda`, `--features metal`, or `--features vulkan`
     /// to enable GPU acceleration.
+    ///
+    /// Use [`Model::from_local_with_temperature`] to customise the sampling temperature.
     pub fn from_local() -> Self {
         Self {
-            provider: ModelProvider::Local(Local::new()),
+            provider: ModelProvider::Local(Local::new().with_temperature(0.1)),
         }
     }
 

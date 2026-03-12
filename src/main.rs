@@ -56,7 +56,7 @@ async fn main() {
 
 fn print_resume(r: &cvxtract::Resume) {
     println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("  {}", r.name);
+    println!("  {}", r.name.as_deref().unwrap_or("Unknown"));
     if let Some(e) = &r.email {
         println!("  Email    : {e}");
     }
@@ -81,15 +81,15 @@ fn print_resume(r: &cvxtract::Resume) {
     if !r.experience.is_empty() {
         println!("\nEXPERIENCE");
         for job in &r.experience {
-            let start = date_str(job.duration.start.as_ref());
+            let start = date_str(job.duration.as_ref().and_then(|d| d.start.as_ref()));
             let end = job
                 .duration
-                .end
                 .as_ref()
-                .map_or("Present".into(), |d| date_str(Some(d)));
+                .and_then(|d| d.end.as_ref())
+                .map_or("?".into(), |d| date_str(Some(d)));
             println!(
                 "  • {} @ {}  [{start} – {end}]",
-                job.role,
+                job.role.as_deref().unwrap_or("—"),
                 job.company.as_deref().unwrap_or("—")
             );
             for h in &job.highlights {
@@ -101,19 +101,22 @@ fn print_resume(r: &cvxtract::Resume) {
     if !r.education.is_empty() {
         println!("\nEDUCATION");
         for edu in &r.education {
-            let start = date_str(edu.duration.start.as_ref());
+            let start = date_str(edu.duration.as_ref().and_then(|d| d.start.as_ref()));
             let end = edu
                 .duration
-                .end
                 .as_ref()
-                .map_or("Present".into(), |d| date_str(Some(d)));
+                .and_then(|d| d.end.as_ref())
+                .map_or("?".into(), |d| date_str(Some(d)));
             let degree = [edu.degree.as_deref(), edu.field.as_deref()]
                 .iter()
                 .flatten()
                 .cloned()
                 .collect::<Vec<_>>()
                 .join(", ");
-            println!("  • {}  [{start} – {end}]", edu.institution);
+            println!(
+                "  • {}  [{start} – {end}]",
+                edu.institution.as_deref().unwrap_or("—")
+            );
             if !degree.is_empty() {
                 println!("    {degree}");
             }
@@ -132,7 +135,7 @@ fn print_resume(r: &cvxtract::Resume) {
         println!("\nCERTIFICATIONS");
         for c in &r.certifications {
             let issuer = c.issuer.as_deref().unwrap_or("");
-            println!("  • {}  {issuer}", c.name);
+            println!("  • {}  {issuer}", c.name.as_deref().unwrap_or("—"));
         }
     }
 
@@ -142,8 +145,8 @@ fn print_resume(r: &cvxtract::Resume) {
             .languages
             .iter()
             .map(|l| match &l.proficiency {
-                Some(p) => format!("{} ({})", l.language, p),
-                None => l.language.clone(),
+                Some(p) => format!("{} ({})", l.language.as_deref().unwrap_or("—"), p),
+                None => l.language.as_deref().unwrap_or("—").to_string(),
             })
             .collect();
         println!("  {}", list.join("  ·  "));

@@ -12,6 +12,7 @@ pub struct Local {
     model: Option<LlamaModel>,
     model_path: PathBuf,
     initialized: bool,
+    temperature: f32,
 }
 
 #[derive(Debug)]
@@ -52,7 +53,18 @@ impl Local {
             model: None,
             model_path,
             initialized: false,
+            temperature: 0.6,
         }
+    }
+
+    /// Set the sampling temperature (default: 0.6).
+    ///
+    /// - `0.0` — deterministic greedy decoding
+    /// - `0.1–0.7` — focused / factual (recommended for structured extraction)
+    /// - `1.0+` — more creative / varied
+    pub fn with_temperature(mut self, temperature: f32) -> Self {
+        self.temperature = temperature;
+        self
     }
 
     /// Initialize the model with llama-cpp-2 API (download if needed, then load)
@@ -233,7 +245,14 @@ impl Local {
 
         // Initialize decoder and sampler
         let mut decoder = encoding_rs::UTF_8.new_decoder();
-        let mut sampler = LlamaSampler::greedy();
+        let mut sampler = if self.temperature == 0.0 {
+            LlamaSampler::greedy()
+        } else {
+            LlamaSampler::chain_simple([
+                LlamaSampler::temp(self.temperature),
+                LlamaSampler::dist(1234),
+            ])
+        };
 
         // Generate tokens one by one
         for _ in 0..max_tokens {

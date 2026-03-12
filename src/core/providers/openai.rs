@@ -91,6 +91,7 @@ impl OpenAI {
     pub async fn generate(&self, prompt: &str) -> String {
         let request = ChatRequest {
             model: self.model.clone(),
+            temperature: Some(0.1),
             messages: vec![
                 ChatMessage {
                     role: "system".to_string(),
