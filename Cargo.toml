@@ -39,7 +39,7 @@ encoding_rs = "0.8"
 log = "0.4"
 env_logger = "0.11"
 clap = { version = "4", features = ["derive"] }
-pyo3 = { version = "0.22", features = ["extension-module"], optional = true }
+pyo3 = { version = "0.22", features = ["extension-module", "abi3-py39"], optional = true }
 pythonize = { version = "0.22", optional = true }
 
 [features]
