@@ -20,13 +20,13 @@ jobs:
           - name: Linux x86_64
             os: ubuntu-22.04
             target: x86_64
-            manylinux: "2_28"
+            manylinux: "2_34"
 
           # ── Linux aarch64 (manylinux) ─────────────────────────────────────
           - name: Linux aarch64
             os: ubuntu-24.04-arm
             target: aarch64
-            manylinux: "2_28"
+            manylinux: "2_34"
 
           # ── macOS x86_64 ──────────────────────────────────────────────────
           - name: macOS x86_64
@@ -63,7 +63,7 @@ jobs:
           manylinux: ${{ matrix.manylinux || 'off' }}
           args: --release --features python --out dist
           before-script-linux: |
-            yum install -y cmake openssl-devel clang clang-devel || true
+            dnf install -y cmake clang openssl-devel || yum install -y cmake clang openssl-devel || true
         env:
           COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
 
