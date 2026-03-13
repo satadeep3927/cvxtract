@@ -20,13 +20,13 @@ jobs:
           - name: Linux x86_64
             os: ubuntu-22.04
             target: x86_64
-            manylinux: auto
+            manylinux: "2_28"
 
           # ── Linux aarch64 (manylinux) ─────────────────────────────────────
           - name: Linux aarch64
             os: ubuntu-24.04-arm
             target: aarch64
-            manylinux: auto
+            manylinux: "2_28"
 
           # ── macOS x86_64 ──────────────────────────────────────────────────
           - name: macOS x86_64
@@ -48,7 +48,9 @@ jobs:
 
       - name: Install macOS build dependencies
         if: runner.os == 'macOS'
-        run: brew install cmake
+        run: |
+          brew install cmake
+          echo "MACOSX_DEPLOYMENT_TARGET=11.0" >> $GITHUB_ENV
 
       - name: Install Windows build dependencies
         if: runner.os == 'Windows'
@@ -61,7 +63,7 @@ jobs:
           manylinux: ${{ matrix.manylinux || 'off' }}
           args: --release --features python --out dist
           before-script-linux: |
-            yum install -y cmake openssl-devel || apt-get install -y cmake libssl-dev || true
+            yum install -y cmake openssl-devel clang clang-devel || true
         env:
           COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
 
