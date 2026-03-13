@@ -1,0 +1,41 @@
+[build-system]
+requires = ["maturin>=1.4,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "cvxtract"
+version = "0.2.0"
+requires-python = ">=3.9"
+description = "LLM-powered CV/resume extraction — typed Python dicts from PDF, DOCX, HTML, or TXT"
+readme = "README.md"
+keywords = ["resume", "cv", "llm", "extraction", "document"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Text Processing",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+# No Python runtime dependencies — everything is compiled into the Rust extension.
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/satadeep3927/cvxtract"
+Repository = "https://github.com/satadeep3927/cvxtract"
+Documentation = "https://docs.rs/cvxtract"
+"Bug Tracker" = "https://github.com/satadeep3927/cvxtract/issues"
+
+[tool.maturin]
+# Rust feature flags to enable when building the Python extension
+features = ["python"]
+# The Python module name (must match the #[pymodule] fn name in lib.rs)
+module-name = "cvxtract"

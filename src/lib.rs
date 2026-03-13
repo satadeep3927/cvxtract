@@ -74,6 +74,10 @@
 
 mod core;
 
+// ── Python extension module ──────────────────────────────────────────────────
+#[cfg(feature = "python")]
+pub mod python;
+
 // ── Public API ──────────────────────────────────────────────────────────────
 
 pub use core::extractor::error::ExtractionError;

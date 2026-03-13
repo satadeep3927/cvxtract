@@ -14,6 +14,7 @@ exclude = [".cache/", "target/"]
 [lib]
 name = "cvxtract"
 path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
 
 [[bin]]
 name = "cvxtract"
@@ -25,7 +26,7 @@ zip = "0.6"
 quick-xml = "0.31"
 
 # LLM inference dependencies
-reqwest = { version = "0.11", features = ["stream", "json"] }
+reqwest = { version = "0.11", default-features = false, features = ["stream", "json", "rustls-tls"] }
 tokio = { version = "1.0", features = ["full"] }
 tokio-util = { version = "0.7", features = ["codec"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -36,7 +37,10 @@ futures-util = "0.3"
 llama-cpp-2 = { version = "0.1.138", features = [] }
 encoding_rs = "0.8"
 log = "0.4"
+env_logger = "0.11"
 clap = { version = "4", features = ["derive"] }
+pyo3 = { version = "0.22", features = ["extension-module"], optional = true }
+pythonize = { version = "0.22", optional = true }
 
 [features]
 # Enable GPU acceleration (requires the respective toolkit at compile time).
@@ -44,6 +48,6 @@ clap = { version = "4", features = ["derive"] }
 cuda   = ["llama-cpp-2/cuda"]    # NVIDIA CUDA
 metal  = ["llama-cpp-2/metal"]   # Apple Silicon / macOS Metal
 vulkan = ["llama-cpp-2/vulkan"]  # Cross-platform Vulkan (AMD/Intel/NVIDIA)
+python = ["pyo3", "pythonize"]   # Python extension module (maturin)
 
 [dev-dependencies]
-env_logger = "0.11"

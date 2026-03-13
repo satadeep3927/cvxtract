@@ -1,0 +1,120 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+jobs:
+  build-wheels:
+    name: Wheel — ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ── Linux x86_64 (manylinux) ───────────────────────────────────────
+          - name: Linux x86_64
+            os: ubuntu-22.04
+            target: x86_64
+            manylinux: auto
+
+          # ── Linux aarch64 (manylinux) ─────────────────────────────────────
+          - name: Linux aarch64
+            os: ubuntu-24.04-arm
+            target: aarch64
+            manylinux: auto
+
+          # ── macOS x86_64 ──────────────────────────────────────────────────
+          - name: macOS x86_64
+            os: macos-14
+            target: x86_64
+
+          # ── macOS Apple Silicon ────────────────────────────────────────────
+          - name: macOS Apple Silicon
+            os: macos-14
+            target: aarch64
+
+          # ── Windows x86_64 ────────────────────────────────────────────────
+          - name: Windows x86_64
+            os: windows-2022
+            target: x86_64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install macOS build dependencies
+        if: runner.os == 'macOS'
+        run: brew install cmake
+
+      - name: Install Windows build dependencies
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Build wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          manylinux: ${{ matrix.manylinux || 'off' }}
+          args: --release --features python --out dist
+          before-script-linux: |
+            yum install -y cmake openssl-devel || apt-get install -y cmake libssl-dev || true
+        env:
+          COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
+
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.name }}
+          path: dist/*.whl
+
+  # ── Build the pure-Python sdist ───────────────────────────────────────────
+  build-sdist:
+    name: Source distribution
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
+
+      - name: Upload sdist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+
+  # ── Publish all artifacts to PyPI ─────────────────────────────────────────
+  publish:
+    name: Publish to PyPI
+    runs-on: ubuntu-22.04
+    needs: [build-wheels, build-sdist]
+    environment: pypi          # optional but recommended — add a "pypi" env in repo settings
+    permissions:
+      id-token: write          # required for OIDC trusted publishing
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "wheel-*"
+          path: dist
+          merge-multiple: true
+
+      - name: Download sdist
+        uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # Uses OIDC trusted publishing — no API token needed.
+        # Set up at: https://pypi.org/manage/project/cvxtract/settings/publishing/
+        # Add a trusted publisher: owner=satadeep3927, repo=cvxtract,
+        # workflow=publish-pypi.yml, environment=pypi
